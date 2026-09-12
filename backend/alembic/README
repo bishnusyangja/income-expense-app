@@ -1,0 +1,8 @@
+Generic single-database configuration.
+
+Put generated revisions in `alembic/versions/`. After changing `app/models.py`:
+
+```bash
+uv run alembic revision --autogenerate -m "describe your change"
+uv run alembic upgrade head
+```
