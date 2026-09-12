@@ -40,7 +40,7 @@ curl -X POST http://127.0.0.1:8080/register \
 
 ### Database migrations
 
-SQLAlchemy models live in `backend/app/models.py`. Changing a model does **not** update SQLite by itself.
+SQLAlchemy models live in `backend/user/dbmodels.py`. Changing a model does **not** update SQLite by itself.
 
 Alembic migration scripts live in `backend/alembic/versions/`. After you change a model, generate and apply a migration from `backend/`:
 

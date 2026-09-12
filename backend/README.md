@@ -31,7 +31,7 @@ curl -X POST http://127.0.0.1:8080/register \
 
 ## Database migrations
 
-Edit schemas in `app/models.py`. Migration files go in `alembic/versions/`.
+Edit schemas in `user/dbmodels.py`. Migration files go in `alembic/versions/`.
 
 ```bash
 uv run alembic revision --autogenerate -m "describe your change"

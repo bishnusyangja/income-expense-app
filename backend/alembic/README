@@ -1,6 +1,6 @@
 Generic single-database configuration.
 
-Put generated revisions in `alembic/versions/`. After changing `app/models.py`:
+Put generated revisions in `alembic/versions/`. After changing `user/dbmodels.py`:
 
 ```bash
 uv run alembic revision --autogenerate -m "describe your change"
