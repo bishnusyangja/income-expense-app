@@ -190,13 +190,8 @@ dmypy.json
 cython_debug/
 
 # PyCharm / IntelliJ
-# Ignore personal IDE state; keep the module files so Project view works.
-.idea/*
-!.idea/modules.xml
-!.idea/*.iml
-!.idea/vcs.xml
-!.idea/inspectionProfiles/
-!.idea/inspectionProfiles/**
+.idea/
+*.iml
 
 # Abstra
 #   Abstra is an AI-powered process automation framework.
