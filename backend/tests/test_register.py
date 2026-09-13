@@ -3,7 +3,8 @@ from sqlalchemy.orm import sessionmaker
 
 from tests.helpers import (
     REGISTER_URL,
-    assert_error_detail,
+    assert_api_error,
+    assert_envelope,
     assert_status,
     assert_validation_error,
     max_length_message,
@@ -28,27 +29,28 @@ class TestRegisterSuccess:
     def test_register_returns_201_and_user_body(self, client, valid_payload):
         response = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_status(response, 201)
-        body = response.json()
+        body = assert_envelope(response, 201)
+        assert body["message"] == "User registered successfully"
+        assert body["errors"] is None
+        data = body["data"]
         for field in RESPONSE_FIELDS:
-            assert field in body, f"Missing field {field!r} in {body}"
+            assert field in data, f"Missing field {field!r} in {data}"
 
-        assert body["id"] >= 1
-        assert body["first_name"] == valid_payload["first_name"]
-        assert body["last_name"] == valid_payload["last_name"]
-        assert body["email"] == valid_payload["email"]
-        assert body["username"] == valid_payload["email"]
-        assert body["address"] == valid_payload["address"]
-        assert body["phone"] == valid_payload["phone"]
-        assert body["created_at"]
+        assert data["id"] >= 1
+        assert data["first_name"] == valid_payload["first_name"]
+        assert data["last_name"] == valid_payload["last_name"]
+        assert data["email"] == valid_payload["email"]
+        assert data["username"] == valid_payload["email"]
+        assert data["address"] == valid_payload["address"]
+        assert data["phone"] == valid_payload["phone"]
+        assert data["created_at"]
 
     def test_register_does_not_return_password_fields(self, client, valid_payload):
         response = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_status(response, 201)
-        body = response.json()
-        assert "password" not in body
-        assert "hashed_password" not in body
+        data = assert_envelope(response, 201)["data"]
+        assert "password" not in data
+        assert "hashed_password" not in data
 
     def test_register_stores_hashed_password(self, client, db_engine, valid_payload):
         response = client.post(REGISTER_URL, json=valid_payload)
@@ -68,24 +70,21 @@ class TestRegisterSuccess:
         valid_payload["email"] = "Jane.Doe@Example.COM"
         response = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_status(response, 201)
-        body = response.json()
-        assert body["email"] == "jane.doe@example.com"
-        assert body["username"] == "jane.doe@example.com"
+        data = assert_envelope(response, 201)["data"]
+        assert data["email"] == "jane.doe@example.com"
+        assert data["username"] == "jane.doe@example.com"
 
     def test_register_accepts_plus_addressed_email(self, client, valid_payload):
         valid_payload["email"] = "jane+tag@example.com"
         response = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_status(response, 201)
-        assert response.json()["email"] == "jane+tag@example.com"
+        assert assert_envelope(response, 201)["data"]["email"] == "jane+tag@example.com"
 
     def test_register_strips_whitespace_around_email(self, client, valid_payload):
         valid_payload["email"] = "  jane@example.com  "
         response = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_status(response, 201)
-        assert response.json()["email"] == "jane@example.com"
+        assert assert_envelope(response, 201)["data"]["email"] == "jane@example.com"
 
     def test_register_accepts_min_length_fields(self, client):
         payload = {
@@ -98,12 +97,11 @@ class TestRegisterSuccess:
         }
         response = client.post(REGISTER_URL, json=payload)
 
-        assert_status(response, 201)
-        body = response.json()
-        assert body["first_name"] == "J"
-        assert body["last_name"] == "D"
-        assert body["address"] == "x"
-        assert body["phone"] == "1234567"
+        data = assert_envelope(response, 201)["data"]
+        assert data["first_name"] == "J"
+        assert data["last_name"] == "D"
+        assert data["address"] == "x"
+        assert data["phone"] == "1234567"
 
     def test_register_accepts_max_length_fields(self, client):
         payload = {
@@ -112,24 +110,22 @@ class TestRegisterSuccess:
             "email": "max@example.com",
             "address": "c" * 500,
             "phone": "1" * 32,
-            # bcrypt rejects secrets longer than 72 bytes
             "password": "p" * 72,
         }
         response = client.post(REGISTER_URL, json=payload)
 
-        assert_status(response, 201)
-        body = response.json()
-        assert body["first_name"] == payload["first_name"]
-        assert body["last_name"] == payload["last_name"]
-        assert body["address"] == payload["address"]
-        assert body["phone"] == payload["phone"]
+        data = assert_envelope(response, 201)["data"]
+        assert data["first_name"] == payload["first_name"]
+        assert data["last_name"] == payload["last_name"]
+        assert data["address"] == payload["address"]
+        assert data["phone"] == payload["phone"]
 
     def test_register_ignores_unknown_fields(self, client, valid_payload):
         valid_payload["role"] = "admin"
         response = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_status(response, 201)
-        assert "role" not in response.json()
+        data = assert_envelope(response, 201)["data"]
+        assert "role" not in data
 
     def test_register_second_unique_email_succeeds(self, client, valid_payload):
         first = client.post(REGISTER_URL, json=valid_payload)
@@ -138,9 +134,9 @@ class TestRegisterSuccess:
         valid_payload["email"] = "john@example.com"
         second = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_status(second, 201)
-        assert second.json()["email"] == "john@example.com"
-        assert second.json()["id"] != first.json()["id"]
+        second_data = assert_envelope(second, 201)["data"]
+        assert second_data["email"] == "john@example.com"
+        assert second_data["id"] != first.json()["data"]["id"]
 
 
 class TestRegisterConflict:
@@ -150,7 +146,12 @@ class TestRegisterConflict:
 
         duplicate = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_error_detail(duplicate, 409, "Email is already registered")
+        assert_api_error(
+            duplicate,
+            409,
+            errors={"email": "Email is already registered"},
+            message="Registration failed",
+        )
 
     def test_duplicate_email_different_case_returns_409(self, client, valid_payload):
         first = client.post(REGISTER_URL, json=valid_payload)
@@ -159,7 +160,11 @@ class TestRegisterConflict:
         valid_payload["email"] = "Jane@Example.com"
         duplicate = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_error_detail(duplicate, 409, "Email is already registered")
+        assert_api_error(
+            duplicate,
+            409,
+            errors={"email": "Email is already registered"},
+        )
 
     def test_duplicate_email_with_other_fields_changed_returns_409(
         self, client, valid_payload
@@ -178,7 +183,11 @@ class TestRegisterConflict:
         )
         duplicate = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_error_detail(duplicate, 409, "Email is already registered")
+        assert_api_error(
+            duplicate,
+            409,
+            errors={"email": "Email is already registered"},
+        )
 
 
 class TestRegisterMissingFields:
@@ -187,24 +196,27 @@ class TestRegisterMissingFields:
         del valid_payload[field]
         response = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_validation_error(response, field, "Field required")
+        assert_validation_error(response, field, "This field is required")
 
     def test_empty_object_reports_all_required_fields(self, client):
         response = client.post(REGISTER_URL, json={})
 
-        assert_status(response, 422)
-        detail = response.json()["detail"]
-        missing_fields = {error["loc"][-1] for error in detail}
-        assert missing_fields == set(REQUIRED_FIELDS)
-        assert all(error["msg"] == "Field required" for error in detail)
+        body = assert_api_error(
+            response,
+            422,
+            errors={field: "This field is required" for field in REQUIRED_FIELDS},
+            message="Validation failed",
+        )
+        assert set(body["errors"]) == set(REQUIRED_FIELDS)
 
     def test_missing_body_returns_422(self, client):
         response = client.post(REGISTER_URL)
 
-        assert_status(response, 422)
-        detail = response.json()["detail"]
-        assert isinstance(detail, list)
-        assert any("Field required" in error.get("msg", "") for error in detail)
+        assert_api_error(
+            response,
+            422,
+            errors={"non_field": "Request body is required"},
+        )
 
 
 class TestRegisterInvalidValues:
@@ -246,7 +258,7 @@ class TestRegisterInvalidValues:
             ("last_name", "b" * 101, 100),
             ("address", "c" * 501, 500),
             ("phone", "1" * 33, 32),
-            ("password", "p" * 129, 128),
+            ("password", "p" * 73, 72),
         ],
     )
     def test_value_longer_than_max_returns_422(
@@ -272,15 +284,20 @@ class TestRegisterInvalidValues:
         valid_payload["email"] = email
         response = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_validation_error(response, "email", "value is not a valid email address")
+        assert_validation_error(response, "email", "Enter a valid email address")
+
+    def test_password_same_as_email_returns_422(self, client, valid_payload):
+        valid_payload["password"] = "jane@example.com"
+        response = client.post(REGISTER_URL, json=valid_payload)
+
+        assert_validation_error(response, "non_field", "Password cannot be the same as email")
 
     @pytest.mark.parametrize("field", REQUIRED_FIELDS)
     def test_null_field_returns_422(self, client, valid_payload, field):
         valid_payload[field] = None
         response = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_status(response, 422)
-        assert_validation_error(response, field, "Input should be a valid string")
+        assert_validation_error(response, field, "This field must be a string")
 
     @pytest.mark.parametrize(
         ("field", "value"),
@@ -297,9 +314,8 @@ class TestRegisterInvalidValues:
         valid_payload[field] = value
         response = client.post(REGISTER_URL, json=valid_payload)
 
-        assert_status(response, 422)
-        detail = response.json()["detail"]
-        assert any(field in error.get("loc", []) for error in detail)
+        body = assert_envelope(response, 422)
+        assert field in body["errors"]
 
 
 class TestRegisterMalformedRequest:
@@ -310,30 +326,33 @@ class TestRegisterMalformedRequest:
             headers={"Content-Type": "application/json"},
         )
 
-        assert_status(response, 422)
-        body = response.json()
-        detail = body["detail"]
-        if isinstance(detail, str):
-            assert "json" in detail.lower()
-        else:
-            messages = [error.get("msg", "") for error in detail]
-            assert any("JSON decode error" in msg for msg in messages)
+        assert_api_error(
+            response,
+            422,
+            errors={"non_field": "Invalid JSON in request body"},
+        )
 
     def test_json_array_body_returns_422(self, client):
         response = client.post(REGISTER_URL, json=[])
 
-        assert_status(response, 422)
-        detail = response.json()["detail"]
-        assert isinstance(detail, list)
-        assert any("Input should be a valid dictionary" in error.get("msg", "") for error in detail)
+        assert_api_error(
+            response,
+            422,
+            errors={"non_field": "Request body must be a JSON object"},
+        )
 
     def test_form_encoded_body_returns_422(self, client, valid_payload):
         response = client.post(REGISTER_URL, data=valid_payload)
 
-        assert_status(response, 422)
+        assert_envelope(response, 422)
 
     @pytest.mark.parametrize("method", ["get", "put", "patch", "delete"])
     def test_unsupported_method_returns_405(self, client, method):
         response = getattr(client, method)(REGISTER_URL)
 
-        assert_error_detail(response, 405, "Method Not Allowed")
+        assert_api_error(
+            response,
+            405,
+            errors={"method": "Method not allowed"},
+            message="Method not allowed",
+        )

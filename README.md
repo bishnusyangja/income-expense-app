@@ -38,7 +38,7 @@ Unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`) require CSRF protection: a `cs
 
 ```bash
 TOKEN=$(curl -s -c cookies.txt http://127.0.0.1:8080/csrf-token \
-  | python3 -c "import sys, json; print(json.load(sys.stdin)['csrf_token'])")
+  | python3 -c "import sys, json; print(json.load(sys.stdin)['data']['csrf_token'])")
 ```
 
 Email is stored as the username. Send first name, last name, email, address, phone, and password:

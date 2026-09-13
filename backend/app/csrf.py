@@ -2,7 +2,9 @@ import secrets
 
 from fastapi import APIRouter, Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
+
+from app.responses import json_response
 
 CSRF_COOKIE_NAME = "csrf_token"
 CSRF_HEADER_NAME = "X-CSRF-Token"
@@ -37,14 +39,16 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         if request.method in UNSAFE_METHODS:
             if not cookie_token or not header_token:
-                return JSONResponse(
+                return json_response(
                     status_code=403,
-                    content={"detail": "CSRF token missing"},
+                    message="CSRF check failed",
+                    errors={"csrf": "CSRF token missing"},
                 )
             if not csrf_tokens_match(cookie_token, header_token):
-                return JSONResponse(
+                return json_response(
                     status_code=403,
-                    content={"detail": "CSRF token invalid"},
+                    message="CSRF check failed",
+                    errors={"csrf": "CSRF token invalid"},
                 )
             request.state.csrf_token = cookie_token
         else:
@@ -61,5 +65,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
 
 @router.get("/csrf-token")
-def get_csrf_token(request: Request) -> dict[str, str]:
-    return {"csrf_token": request.state.csrf_token}
+def get_csrf_token(request: Request):
+    return json_response(
+        status_code=200,
+        message="CSRF token generated",
+        data={"csrf_token": request.state.csrf_token},
+    )

@@ -28,7 +28,7 @@ Unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`) require a `csrf_token` cookie 
 
 ```bash
 TOKEN=$(curl -s -c cookies.txt http://127.0.0.1:8080/csrf-token \
-  | python3 -c "import sys, json; print(json.load(sys.stdin)['csrf_token'])")
+  | python3 -c "import sys, json; print(json.load(sys.stdin)['data']['csrf_token'])")
 
 curl -X POST http://127.0.0.1:8080/register \
   -b cookies.txt \

@@ -10,36 +10,45 @@ def assert_status(response, expected_status: int) -> None:
     )
 
 
-def assert_error_detail(response, expected_status: int, expected_detail: str) -> None:
+def assert_envelope(response, expected_status: int) -> dict:
     assert_status(response, expected_status)
     body = response.json()
-    assert "detail" in body
-    assert body["detail"] == expected_detail, (
-        f"Expected detail {expected_detail!r}, got {body['detail']!r}"
+    assert body.get("status-code") == expected_status, (
+        f"Expected status-code {expected_status}, got {body.get('status-code')!r}: {body}"
     )
+    assert "message" in body
+    assert "data" in body
+    assert "errors" in body
+    return body
+
+
+def assert_api_error(
+    response,
+    expected_status: int,
+    *,
+    errors: dict[str, str],
+    message: str | None = None,
+) -> dict:
+    body = assert_envelope(response, expected_status)
+    assert body["data"] is None
+    assert isinstance(body["errors"], dict)
+    for field, expected_message in errors.items():
+        assert field in body["errors"], f"Missing error for {field!r} in {body['errors']}"
+        assert expected_message in body["errors"][field], (
+            f"Expected {field} message {expected_message!r}, got {body['errors'][field]!r}"
+        )
+    if message is not None:
+        assert body["message"] == message
+    return body
 
 
 def assert_validation_error(response, field: str, message: str) -> None:
-    assert_status(response, 422)
-    body = response.json()
-    assert "detail" in body
-    detail = body["detail"]
-    assert isinstance(detail, list), f"Expected list of errors, got {detail!r}"
-
-    field_errors = [error for error in detail if field in error.get("loc", [])]
-    assert field_errors, f"No validation error for {field!r} in {detail!r}"
-
-    messages = [error.get("msg", "") for error in field_errors]
-    assert any(message in msg for msg in messages), (
-        f"Expected message containing {message!r} for {field}, got {messages}"
-    )
+    assert_api_error(response, 422, errors={field: message}, message="Validation failed")
 
 
 def min_length_message(min_length: int) -> str:
-    noun = "character" if min_length == 1 else "characters"
-    return f"String should have at least {min_length} {noun}"
+    return f"Must be at least {min_length} characters"
 
 
 def max_length_message(max_length: int) -> str:
-    noun = "character" if max_length == 1 else "characters"
-    return f"String should have at most {max_length} {noun}"
+    return f"Must be at most {max_length} characters"

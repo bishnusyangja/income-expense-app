@@ -54,6 +54,6 @@ def bare_client(db_engine):
 
 @pytest.fixture
 def client(bare_client):
-    token = bare_client.get(CSRF_URL).json()["csrf_token"]
+    token = bare_client.get(CSRF_URL).json()["data"]["csrf_token"]
     bare_client.headers[CSRF_HEADER_NAME] = token
     return bare_client
