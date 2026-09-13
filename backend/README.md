@@ -12,13 +12,28 @@ From the project root:
 
 The API is available at http://127.0.0.1:8080. Docs: http://127.0.0.1:8080/docs.
 
+## Run tests
+
+```bash
+uv run pytest
+```
+
+This runs every test in the `tests` package. Add `-v` for per-test names.
+
 ## Register a user
 
 `POST /register` — email is used as the username.
 
+Unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`) require a `csrf_token` cookie and a matching `X-CSRF-Token` header:
+
 ```bash
+TOKEN=$(curl -s -c cookies.txt http://127.0.0.1:8080/csrf-token \
+  | python3 -c "import sys, json; print(json.load(sys.stdin)['csrf_token'])")
+
 curl -X POST http://127.0.0.1:8080/register \
+  -b cookies.txt \
   -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $TOKEN" \
   -d '{
     "first_name": "Jane",
     "last_name": "Doe",

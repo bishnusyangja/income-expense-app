@@ -6,6 +6,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
+from tests.helpers import CSRF_HEADER_NAME, CSRF_URL
 from user.dbmodels import User  # noqa: F401
 
 
@@ -35,7 +36,7 @@ def db_engine():
 
 
 @pytest.fixture
-def client(db_engine):
+def bare_client(db_engine):
     TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
 
     def override_get_db():
@@ -49,3 +50,10 @@ def client(db_engine):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client(bare_client):
+    token = bare_client.get(CSRF_URL).json()["csrf_token"]
+    bare_client.headers[CSRF_HEADER_NAME] = token
+    return bare_client

@@ -19,15 +19,35 @@ The API lives in `backend/` and uses FastAPI, SQLAlchemy, and a local SQLite fil
 
 The script installs dependencies, applies database migrations, then starts the API at [http://127.0.0.1:8080](http://127.0.0.1:8080). Interactive docs are at [http://127.0.0.1:8080/docs](http://127.0.0.1:8080/docs).
 
+### Run tests
+
+From `backend/`:
+
+```bash
+cd backend
+uv run pytest
+```
+
+This runs every test in the `tests` package. Add `-v` for per-test names.
+
 ### Register a user
 
 `POST /register`
+
+Unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`) require CSRF protection: a `csrf_token` cookie plus a matching `X-CSRF-Token` header. Fetch a token first:
+
+```bash
+TOKEN=$(curl -s -c cookies.txt http://127.0.0.1:8080/csrf-token \
+  | python3 -c "import sys, json; print(json.load(sys.stdin)['csrf_token'])")
+```
 
 Email is stored as the username. Send first name, last name, email, address, phone, and password:
 
 ```bash
 curl -X POST http://127.0.0.1:8080/register \
+  -b cookies.txt \
   -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $TOKEN" \
   -d '{
     "first_name": "Jane",
     "last_name": "Doe",

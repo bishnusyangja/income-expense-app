@@ -1,4 +1,7 @@
 REGISTER_URL = "/register"
+CSRF_URL = "/csrf-token"
+CSRF_HEADER_NAME = "X-CSRF-Token"
+CSRF_COOKIE_NAME = "csrf_token"
 
 
 def assert_status(response, expected_status: int) -> None:
