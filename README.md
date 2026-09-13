@@ -58,6 +58,25 @@ curl -X POST http://127.0.0.1:8080/register \
   }'
 ```
 
+### Log in
+
+`POST /login` returns a JWT that expires in 30 days. Use the same CSRF cookie and header as register:
+
+```bash
+curl -X POST http://127.0.0.1:8080/login \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $TOKEN" \
+  -d '{
+    "email": "jane@example.com",
+    "password": "secret123"
+  }'
+```
+
+The response `data` includes `access_token`, `token_type` (`bearer`), `expires_at`, and the user. Send later requests as `Authorization: Bearer <access_token>`.
+
+Set `JWT_SECRET` in the environment for anything other than local development.
+
 ### Database migrations
 
 SQLAlchemy models live in `backend/user/dbmodels.py`. Changing a model does **not** update SQLite by itself.

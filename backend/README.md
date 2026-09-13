@@ -44,6 +44,23 @@ curl -X POST http://127.0.0.1:8080/register \
   }'
 ```
 
+## Log in
+
+`POST /login` returns a JWT that expires in 30 days:
+
+```bash
+curl -X POST http://127.0.0.1:8080/login \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $TOKEN" \
+  -d '{
+    "email": "jane@example.com",
+    "password": "secret123"
+  }'
+```
+
+Set `JWT_SECRET` in the environment outside local development.
+
 ## Database migrations
 
 Edit schemas in `user/dbmodels.py`. Migration files go in `alembic/versions/`.
