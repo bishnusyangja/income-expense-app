@@ -1,5 +1,7 @@
 REGISTER_URL = "/register"
 LOGIN_URL = "/login"
+INCOMES_URL = "/incomes"
+EXPENDITURES_URL = "/expenditures"
 CSRF_URL = "/csrf-token"
 CSRF_HEADER_NAME = "X-CSRF-Token"
 CSRF_COOKIE_NAME = "csrf_token"

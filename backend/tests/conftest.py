@@ -1,12 +1,13 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from tests.helpers import CSRF_HEADER_NAME, CSRF_URL, REGISTER_URL
+from tests.helpers import CSRF_HEADER_NAME, CSRF_URL, LOGIN_URL, REGISTER_URL
+from finance.dbmodels import Expenditure, Income  # noqa: F401
 from user.dbmodels import User  # noqa: F401
 
 
@@ -29,6 +30,13 @@ def db_engine():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+
+    @event.listens_for(engine, "connect")
+    def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     Base.metadata.create_all(bind=engine)
     yield engine
     Base.metadata.drop_all(bind=engine)
@@ -64,3 +72,14 @@ def registered_user(client, valid_payload):
     response = client.post(REGISTER_URL, json=valid_payload)
     assert response.status_code == 201
     return valid_payload
+
+
+@pytest.fixture
+def auth_client(client, registered_user):
+    response = client.post(
+        LOGIN_URL,
+        json={"email": registered_user["email"], "password": registered_user["password"]},
+    )
+    token = response.json()["data"]["access_token"]
+    client.headers["Authorization"] = f"Bearer {token}"
+    return client

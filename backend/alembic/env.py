@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 from app.database import Base, SQLALCHEMY_DATABASE_URL
+from finance.dbmodels import Expenditure, Income  # noqa: F401
 from user.dbmodels import User  # noqa: F401
 
 config = context.config

@@ -77,6 +77,45 @@ The response `data` includes `access_token`, `token_type` (`bearer`), `expires_a
 
 Set `JWT_SECRET` in the environment for anything other than local development.
 
+### Add income
+
+`POST /incomes` requires CSRF and `Authorization: Bearer <access_token>`. `remaining` starts equal to `amount`.
+
+```bash
+curl -X POST http://127.0.0.1:8080/incomes \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $TOKEN" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -d '{
+    "title": "Salary",
+    "amount": "1000.00",
+    "note": "September pay"
+  }'
+```
+
+List the current user's incomes with `GET /incomes` (JWT required).
+
+### Add expenditure
+
+`POST /expenditures` deducts the amount from the chosen income's `remaining`. It fails with 400 if that income does not have enough left.
+
+```bash
+curl -X POST http://127.0.0.1:8080/expenditures \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $TOKEN" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -d '{
+    "income_id": 1,
+    "title": "Groceries",
+    "amount": "40.00",
+    "note": "Weekly shop"
+  }'
+```
+
+List expenditures with `GET /expenditures`.
+
 ### Database migrations
 
 SQLAlchemy models live in `backend/user/dbmodels.py`. Changing a model does **not** update SQLite by itself.

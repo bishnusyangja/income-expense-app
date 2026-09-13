@@ -93,6 +93,14 @@ def _friendly_message(err: dict) -> str:
         return "This field must be a boolean"
     if err_type in {"int_type", "float_type"}:
         return "This field must be a number"
+    if err_type in {"greater_than", "greater_than_equal"}:
+        return "Must be greater than 0"
+    if err_type in {"decimal_parsing", "decimal_type"}:
+        return "Enter a valid amount"
+    if err_type == "decimal_max_places":
+        return "Amount can have at most 2 decimal places"
+    if err_type in {"int_parsing", "int_from_float"}:
+        return "Enter a valid number"
     if err_type == "list_type":
         return "This field must be a list"
     if _error_field(err) == "email" and (
