@@ -14,6 +14,20 @@ def find_user_by_email(db: Session, email: str) -> User | None:
     return db.query(User).filter(or_(User.email == email, User.username == email)).first()
 
 
+def verify_password(password: str, hashed_password: str) -> bool:
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except ValueError:
+        return False
+
+
+def authenticate_user(db: Session, email: str, password: str) -> User | None:
+    user = find_user_by_email(db, email)
+    if user is None or not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+
 def create_user(db: Session, payload: UserCreate) -> User:
     user = User(
         username=payload.email,

@@ -51,6 +51,33 @@ class UserCreate(BaseModel):
         return self
 
 
+class UserLogin(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=72)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    @field_validator("password")
+    @classmethod
+    def require_password(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("This field cannot be blank")
+        return value
+
+    @model_validator(mode="after")
+    def email_and_password_present(self) -> Self:
+        if not self.email or not self.password:
+            raise ValueError("Email and password are required")
+        return self
+
+
 class UserResponse(BaseModel):
     id: int
     username: EmailStr
