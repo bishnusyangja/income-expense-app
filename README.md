@@ -75,6 +75,19 @@ curl -X POST http://127.0.0.1:8080/login \
 
 The response `data` includes `access_token`, `token_type` (`bearer`), `expires_at`, and the user. Send later requests as `Authorization: Bearer <access_token>`.
 
+### Frontend
+
+The Next.js app lives in `frontend/` and proxies `/backend/*` to the API so CSRF cookies work on the same origin.
+
+Run the API first (`./dev.sh`), then from `frontend/`:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000) to register, log in, add income, and add expenditures.
+
 Set `JWT_SECRET` in the environment for anything other than local development.
 
 ### Add income

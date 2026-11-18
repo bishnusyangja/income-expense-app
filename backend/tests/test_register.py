@@ -11,6 +11,7 @@ from tests.helpers import (
     min_length_message,
 )
 from user.dbmodels import User
+from user.service import verify_password
 
 REQUIRED_FIELDS = ["first_name", "last_name", "email", "address", "phone", "password"]
 RESPONSE_FIELDS = [
@@ -60,7 +61,9 @@ class TestRegisterSuccess:
         try:
             user = session.query(User).one()
             assert user.hashed_password != valid_payload["password"]
-            assert user.hashed_password.startswith("$2")
+            assert user.hashed_password.startswith("$2b$")
+            assert verify_password(valid_payload["password"], user.hashed_password)
+            assert not verify_password("wrongpass", user.hashed_password)
             assert user.username == valid_payload["email"]
             assert user.email == valid_payload["email"]
         finally:

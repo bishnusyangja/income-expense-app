@@ -42,6 +42,27 @@ class TestLoginSuccess:
         assert "password" not in data["user"]
         assert "hashed_password" not in data
 
+    def test_login_verifies_stored_bcrypt_hash(self, client, db_engine, registered_user):
+        from sqlalchemy.orm import sessionmaker
+
+        from user.dbmodels import User
+        from user.service import verify_password
+
+        session = sessionmaker(bind=db_engine, autocommit=False, autoflush=False)()
+        try:
+            user = session.query(User).one()
+            assert user.hashed_password.startswith("$2b$")
+            assert verify_password(registered_user["password"], user.hashed_password)
+        finally:
+            session.close()
+
+        data = _login(
+            client,
+            email=registered_user["email"],
+            password=registered_user["password"],
+        )
+        assert data["user"]["email"] == registered_user["email"]
+
     def test_login_token_expires_in_30_days(self, client, registered_user):
         response = client.post(LOGIN_URL, json=_login_payload())
         token = assert_envelope(response, 200)["data"]["access_token"]

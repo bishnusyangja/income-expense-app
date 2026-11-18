@@ -35,7 +35,10 @@ def login_user(payload: UserLogin, db: Session = Depends(get_db)) -> JSONRespons
         return json_response(
             status_code=401,
             message="Login failed",
-            errors={"email": "Invalid email or password"},
+            errors={
+                "email": "Invalid email or password",
+                "password": "Invalid email or password",
+            },
         )
 
     access_token, expires_at = create_access_token(user)
